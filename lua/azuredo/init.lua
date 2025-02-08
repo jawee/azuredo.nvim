@@ -1,3 +1,5 @@
+local Config = require("azuredo.config")
+
 local M = {}
 
 function M.setup()
@@ -89,9 +91,18 @@ end
 function M.fetch_and_show_workitems()
   local cmd = [[
   az boards query \
+  ]]
+
+  if Config.project ~= nil then
+    cmd = cmd .. "--project" .. Config.project .. " \\ "
+  end
+
+  cmd = cmd
+    .. [[
   --wiql "SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType] \
   FROM WorkItems WHERE [System.State] <> 'Closed' and [System.WorkItemType] in ('Task', 'Bug')" --output json
   ]]
+
   local result = vim.fn.system(cmd)
 
   local success, data = pcall(vim.json.decode, result)

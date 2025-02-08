@@ -1,5 +1,49 @@
+---@class azuredo.Config.mod: azuredo.Config
 local M = {}
 
-function M.setup() end
+---@class azuredo.Config
+---@field config? fun(opts:azuredo.Config)
+local defaults = {
+  project = nil,
+}
+
+---@type azuredo.Config
+local options
+
+---@param opts? azuredo.Config
+function M.setup(opts)
+  opts = opts or {}
+
+  options = {}
+  options = M.get(opts)
+
+  return options
+end
+
+function M.get(...)
+  options = options or M.setup()
+
+  ---@type azuredo.Config[]
+  local all = { {}, defaults, options or {} }
+
+  for i = 1, select("#", ...) do
+    ---@type azuredo.Config?
+    local opts = select(i, ...)
+    if type(opts) == "string" then
+      opts = { mode = opts }
+    end
+    if opts then
+      table.insert(all, opts)
+    end
+  end
+
+  local ret = vim.tbl_deep_extend("force", unpack(all))
+
+  if type(ret.config) == "function" then
+    ret.config(ret)
+  end
+
+  return ret
+end
 
 return M
