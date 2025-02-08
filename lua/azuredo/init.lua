@@ -1,9 +1,11 @@
 local Config = require("azuredo.config")
+local Util = require("azuredo.util")
 
 local M = {}
 
 ---@param opts? azuredo.Config
 function M.setup(opts)
+  Util.debug(vim.inspect(opts))
   require("azuredo.config").setup(opts)
 end
 
@@ -13,6 +15,7 @@ function M.createWindow()
     "Add Work item to Pull Request",
     "Print PR Id",
     "Set PR Id",
+    "Print project",
   }
 
   local buf = vim.api.nvim_create_buf(false, true)
@@ -58,7 +61,7 @@ function M.createWindow()
   for i, option in ipairs(options) do
     vim.keymap.set("n", tostring(i), function()
       vim.api.nvim_win_close(win, true)
-      print(option)
+      Util.debug(option)
     end, { buffer = buf, silent = true })
   end
 end
@@ -86,6 +89,8 @@ function M.executeCommand(command)
     print(M.prId)
   elseif command == "Set PR Id" then
     M.prId = vim.fn.input("Enter PR ID: ")
+  elseif command == "Print project" then
+    print(Config.project)
   end
 end
 
@@ -100,7 +105,9 @@ function M.fetch_and_show_workitems()
   FROM WorkItems WHERE
   ]]
 
+  Util.debug(Config.project)
   if Config.project ~= nil then
+    Util.debug("apply project filter")
     cmd = cmd .. "[System.TeamProject] = '" .. Config.project .. "' AND "
   end
 
@@ -112,7 +119,7 @@ function M.fetch_and_show_workitems()
   local success, data = pcall(vim.json.decode, result)
 
   if not success or not data or #data == 0 then
-    print(result)
+    Util.debug(result)
     print("No open tasks or bugs found or failed to fetch data.")
     return
   end
