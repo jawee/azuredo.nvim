@@ -1,9 +1,12 @@
+local Util = require("azuredo.util")
+
 ---@class azuredo.Config.mod: azuredo.Config
 local M = {}
 
 ---@class azuredo.Config
 ---@field config? fun(opts:azuredo.Config)
 local defaults = {
+  debug = false,
   project = nil,
 }
 
@@ -12,10 +15,13 @@ local options
 
 ---@param opts? azuredo.Config
 function M.setup(opts)
+  Util.debug(vim.inspect(opts))
   opts = opts or {}
 
   options = {}
   options = M.get(opts)
+
+  Util.debug(vim.inspect(options))
 
   return options
 end
@@ -29,9 +35,6 @@ function M.get(...)
   for i = 1, select("#", ...) do
     ---@type azuredo.Config?
     local opts = select(i, ...)
-    if type(opts) == "string" then
-      opts = { mode = opts }
-    end
     if opts then
       table.insert(all, opts)
     end
@@ -43,7 +46,13 @@ function M.get(...)
     ret.config(ret)
   end
 
+  Util.debug(vim.inspect(ret))
   return ret
 end
 
-return M
+return setmetatable(M, {
+  __index = function(_, key)
+    options = options or M.setup()
+    return options[key]
+  end,
+})
