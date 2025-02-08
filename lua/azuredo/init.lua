@@ -88,7 +88,11 @@ end
 
 function M.fetch_and_show_workitems()
   local cmd =
-    [[az boards query --wiql "SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType] FROM WorkItems WHERE [System.State] <> 'Closed' and [System.WorkItemType] in ('Task', 'Bug')" --output json]]
+    [[az boards query --wiql
+    "SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType]
+    FROM WorkItems WHERE
+    [System.State] <> 'Closed' and [System.WorkItemType] in ('Task', 'Bug')"
+    --output json]]
   local result = vim.fn.system(cmd)
 
   local success, data = pcall(vim.json.decode, result)
