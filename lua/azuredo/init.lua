@@ -1,7 +1,7 @@
 local M = {}
 
-function M.setup(opts)
-  require("azuredo.config").setup(opts)
+function M.setup()
+  require("azuredo.config").setup()
 end
 
 function M.createWindow()
@@ -87,16 +87,17 @@ function M.executeCommand(command)
 end
 
 function M.fetch_and_show_workitems()
-  local cmd = [[az boards query --wiql
-    "SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType]
-    FROM WorkItems WHERE
-    [System.State] <> 'Closed' and [System.WorkItemType] in ('Task', 'Bug')"
-    --output json]]
+  local cmd = [[
+  az boards query \
+  --wiql "SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType] \
+  FROM WorkItems WHERE [System.State] <> 'Closed' and [System.WorkItemType] in ('Task', 'Bug')" --output json
+  ]]
   local result = vim.fn.system(cmd)
 
   local success, data = pcall(vim.json.decode, result)
 
   if not success or not data or #data == 0 then
+    print(result)
     print("No open tasks or bugs found or failed to fetch data.")
     return
   end
