@@ -1,5 +1,3 @@
-local Util = require("azuredo.util")
-
 ---@class azuredo.Config.mod: azuredo.Config
 local M = {}
 
@@ -15,13 +13,10 @@ local options
 
 ---@param opts? azuredo.Config
 function M.setup(opts)
-  Util.debug(vim.inspect(opts))
   opts = opts or {}
 
   options = {}
   options = M.get(opts)
-
-  Util.debug(vim.inspect(options))
 
   return options
 end
@@ -46,7 +41,6 @@ function M.get(...)
     ret.config(ret)
   end
 
-  Util.debug(vim.inspect(ret))
   return ret
 end
 
