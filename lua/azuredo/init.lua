@@ -87,8 +87,7 @@ function M.executeCommand(command)
 end
 
 function M.fetch_and_show_workitems()
-  local cmd =
-    [[az boards query --wiql
+  local cmd = [[az boards query --wiql
     "SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType]
     FROM WorkItems WHERE
     [System.State] <> 'Closed' and [System.WorkItemType] in ('Task', 'Bug')"
