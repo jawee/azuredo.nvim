@@ -2,8 +2,9 @@ local Config = require("azuredo.config")
 
 local M = {}
 
-function M.setup()
-  require("azuredo.config").setup()
+---@param opts? azuredo.Config
+function M.setup(opts)
+  require("azuredo.config").setup(opts)
 end
 
 function M.createWindow()
@@ -93,14 +94,17 @@ function M.fetch_and_show_workitems()
   az boards query \
   ]]
 
-  if Config.project ~= nil then
-    cmd = cmd .. "--project" .. Config.project .. " \\ "
-  end
-
   cmd = cmd
     .. [[
   --wiql "SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType] \
-  FROM WorkItems WHERE [System.State] <> 'Closed' and [System.WorkItemType] in ('Task', 'Bug')" --output json
+  FROM WorkItems WHERE
+  ]]
+
+  if Config.project ~= nil then
+    cmd = cmd .. "[System.TeamProject] = '" .. Config.project .. "' AND "
+  end
+
+  cmd = cmd .. [[[System.State] <> 'Closed' and [System.WorkItemType] in ('Task', 'Bug')" --output json
   ]]
 
   local result = vim.fn.system(cmd)
