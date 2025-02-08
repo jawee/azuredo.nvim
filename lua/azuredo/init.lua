@@ -104,8 +104,7 @@ function M.fetch_and_show_workitems()
     cmd = cmd .. "[System.TeamProject] = '" .. Config.project .. "' AND "
   end
 
-  cmd = cmd
-  .. [[[System.State] <> 'Closed' and [System.WorkItemType] in ('Task', 'Bug')" --output json
+  cmd = cmd .. [[[System.State] <> 'Closed' and [System.WorkItemType] in ('Task', 'Bug')" --output json
   ]]
 
   local result = vim.fn.system(cmd)
