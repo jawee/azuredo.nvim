@@ -1,7 +1,6 @@
 local M = {}
 ---@class azuredo.Config
-local defaults = {
-}
+local defaults = {}
 
 ---@type azuredo.Config
 local options
