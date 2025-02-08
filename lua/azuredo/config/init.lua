@@ -35,9 +35,6 @@ function M.get(...)
   for i = 1, select("#", ...) do
     ---@type azuredo.Config?
     local opts = select(i, ...)
-    if type(opts) == "string" then
-      opts = { mode = opts }
-    end
     if opts then
       table.insert(all, opts)
     end
@@ -56,7 +53,6 @@ end
 return setmetatable(M, {
   __index = function(_, key)
     options = options or M.setup()
-    assert(options, "should be setup")
     return options[key]
   end,
 })
