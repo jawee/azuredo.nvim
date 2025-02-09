@@ -6,6 +6,7 @@ local M = {}
 local defaults = {
   debug = false,
   project = nil,
+  telescope = false,
 }
 
 ---@type azuredo.Config
