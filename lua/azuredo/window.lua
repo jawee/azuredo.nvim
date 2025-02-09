@@ -5,7 +5,6 @@ local M = {}
 ---@param options string[]
 ---@param callback fun(integer)
 function M.createWindow(options, callback)
-
   local buf = vim.api.nvim_create_buf(false, true)
   local width = 80
   local max_height = 20
