@@ -12,7 +12,6 @@ end
 
 ---@param msg string
 function M.notify(msg)
-  print("Fidget: " .. tostring(Config.fidget))
   if Config.fidget then
     Fidget.notify(msg, vim.log.levels.INFO)
     return
@@ -22,7 +21,6 @@ end
 
 ---@param msg string
 function M.notifyError(msg)
-  print("Fidget: " .. tostring(Config.fidget))
   if Config.fidget then
     Fidget.notify(msg, vim.log.levels.ERROR)
     return
