@@ -77,6 +77,8 @@ function M.executeCommand(command)
     if success and pr_data and pr_data.pullRequestId then
       print("Pull Request ID: " .. pr_data.pullRequestId)
       M.prId = pr_data.pullRequestId
+    else
+      print("Failed to create Pull Request")
     end
   elseif command == "Add Work item to Pull Request" then
     if not M.prId then
