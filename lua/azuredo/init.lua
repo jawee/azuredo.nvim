@@ -38,25 +38,25 @@ M.prId = nil
 
 function M.executeCommand(command)
   if command == "Create Pull Request" then
-    print("Creating Pull Request")
+    Util.notify("Creating Pull Request")
     local result = vim.fn.system("az repos pr create --output json")
 
     local success, pr_data = pcall(vim.json.decode, result)
     if success and pr_data and pr_data.pullRequestId then
-      print("Pull Request ID: " .. pr_data.pullRequestId)
+      Util.notify("Pull Request ID: " .. pr_data.pullRequestId)
       M.prId = pr_data.pullRequestId
     else
-      print("Failed to create Pull Request")
+      Util.notifyError("Failed to create Pull Request")
     end
   elseif command == "Add Work item to Pull Request" then
     if not M.prId then
-      print("No Pull Request ID found. Please create a Pull Request first.")
+      Util.notifyError("No Pull Request ID found. Please create a Pull Request first.")
       return
     end
 
     M.fetch_and_show_workitems()
   elseif command == "Print PR Id" then
-    print(M.prId)
+    Util.notify(M.prId)
   elseif command == "Set PR Id manually" then
     M.prId = vim.fn.input("Enter PR ID: ")
   elseif command == "Set Existing PR Id" then
@@ -64,10 +64,10 @@ function M.executeCommand(command)
 
     local success, pr_data = pcall(vim.json.decode, result)
     if success and pr_data and pr_data[1].pullRequestId then
-      print("Pull Request ID: " .. pr_data[1].pullRequestId)
+      Util.notify("Pull Request ID: " .. pr_data[1].pullRequestId)
       M.prId = pr_data[1].pullRequestId
     else
-      print("Failed to get ID. PR doesn't exist or something went wrong")
+      Util.notifyError("Failed to get ID. PR doesn't exist or something went wrong")
       Util.debug(result)
     end
   end
@@ -99,7 +99,7 @@ function M.fetch_and_show_workitems()
 
   if not success or not data or #data == 0 then
     Util.debug(result)
-    print("No open tasks or bugs found or failed to fetch data.")
+    Util.notifyError("No open tasks or bugs found or failed to fetch data.")
     return
   end
 
@@ -117,7 +117,7 @@ function M.fetch_and_show_workitems()
   local function select_current_line(row)
     local selected_id = work_item_ids[row]
     if selected_id then
-      print("Adding Id" .. selected_id .. " to PR " .. M.prId)
+      Util.notify("Adding Id" .. selected_id .. " to PR " .. M.prId)
       local work_item_cmd = [[az repos pr work-item add --id ]] .. M.prId .. [[ --work-items ]] .. selected_id
       vim.fn.system(work_item_cmd)
     end
