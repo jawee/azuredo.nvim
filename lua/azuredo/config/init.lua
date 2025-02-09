@@ -7,6 +7,7 @@ local defaults = {
   debug = false,
   project = nil,
   telescope = false,
+  fidget = false,
 }
 
 ---@type azuredo.Config
