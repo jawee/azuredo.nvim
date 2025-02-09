@@ -27,7 +27,11 @@ function M.openMainMenu()
     end
   end
 
-  Window.createWindow(options, select_current_line)
+  if Config.telescope then
+    Window.createTelescopeWindow(options, select_current_line)
+  else
+    Window.createWindow(options, select_current_line)
+  end
 end
 
 M.prId = nil
@@ -119,7 +123,11 @@ function M.fetch_and_show_workitems()
     end
   end
 
-  Window.createWindow(work_items, select_current_line)
+  if Config.telescope then
+    Window.createTelescopeWindow(work_items, select_current_line)
+  else
+    Window.createWindow(work_items, select_current_line)
+  end
 end
 
 vim.api.nvim_create_user_command("Azuredo", function(opts)
