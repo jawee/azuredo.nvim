@@ -15,7 +15,6 @@ function M.createWindow()
     "Add Work item to Pull Request",
     "Print PR Id",
     "Set PR Id",
-    "Print project",
   }
 
   local buf = vim.api.nvim_create_buf(false, true)
@@ -91,8 +90,6 @@ function M.executeCommand(command)
     print(M.prId)
   elseif command == "Set PR Id" then
     M.prId = vim.fn.input("Enter PR ID: ")
-  elseif command == "Print project" then
-    print(Config.project)
   end
 end
 
