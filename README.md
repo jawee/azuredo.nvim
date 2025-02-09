@@ -25,7 +25,7 @@ return {
 }
 ```
 
-## ⚙️ Configuration
+## Configuration
 
 Default settings below.
 
