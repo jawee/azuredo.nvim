@@ -49,4 +49,5 @@ function M.createWindow(options, callback)
     end, { buffer = buf, silent = true })
   end
 end
+
 return M
