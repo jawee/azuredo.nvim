@@ -14,9 +14,9 @@ function M.openMainMenu()
   local options = {
     "Create Pull Request",
     "Add Work item to Pull Request",
-    "Print PR Id",
     "Set Existing PR Id",
     "Set PR Id manually",
+    "Open PR in Browser",
   }
 
   ---@param row integer
@@ -55,8 +55,6 @@ function M.executeCommand(command)
     end
 
     M.fetch_and_show_workitems()
-  elseif command == "Print PR Id" then
-    Util.notify(M.prId)
   elseif command == "Set PR Id manually" then
     M.prId = vim.fn.input("Enter PR ID: ")
   elseif command == "Set Existing PR Id" then
@@ -69,6 +67,20 @@ function M.executeCommand(command)
     else
       Util.notifyError("Failed to get ID. PR doesn't exist or something went wrong")
       Util.debug(result)
+    end
+  elseif command == "Open PR in Browser" then
+    if not M.prId then
+      Util.notifyError("No Pull Request ID found. Please create a Pull Request first.")
+      return
+    end
+
+    local result = vim.fn.system("az repos pr show --id " .. M.prId .. " --query repository.webUrl --output tsv")
+    local success, repo_url = pcall(string.gsub, result, "\n", "")
+    if success then
+      Util.notify("Opening PR " .. M.prId .. " in Browser")
+      vim.ui.open(repo_url .. "/pullrequest/" .. M.prId)
+    else
+      Util.notifyError("Failed to open PR in Browser")
     end
   end
 end
