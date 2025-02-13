@@ -2,20 +2,21 @@ local Util = require("azuredo.util")
 
 local M = {}
 
----@param options string[]
+---@param results string[]
 ---@param callback fun(integer)
-function M.createTelescopeWindow(options, callback)
+function M.createTelescopeWindow(results, callback, prompt_title, results_title)
   local pickers = require("telescope.pickers")
   local finders = require("telescope.finders")
   local conf = require("telescope.config").values
 
   local max_height = 40
-  local height = math.min(#options * 5, max_height)
+  local height = math.min(#results + 4, max_height)
   pickers
     .new({}, {
-      prompt_title = "Select an Option",
+      prompt_title = prompt_title,
+      results_title = results_title,
       finder = finders.new_table({
-        results = options,
+        results = results,
       }),
       sorter = conf.generic_sorter({}),
       layout_strategy = "center",

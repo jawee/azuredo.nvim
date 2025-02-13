@@ -28,7 +28,7 @@ function M.openMainMenu()
   end
 
   if Config.telescope then
-    Window.createTelescopeWindow(options, select_current_line)
+    Window.createTelescopeWindow(options, select_current_line, nil, "Available Commands")
   else
     Window.createWindow(options, select_current_line)
   end
@@ -124,7 +124,7 @@ function M.fetch_and_show_workitems()
   end
 
   if Config.telescope then
-    Window.createTelescopeWindow(work_items, select_current_line)
+    Window.createTelescopeWindow(work_items, select_current_line, nil, "Select Work Item")
   else
     Window.createWindow(work_items, select_current_line)
   end
