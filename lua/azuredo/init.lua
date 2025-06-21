@@ -17,6 +17,7 @@ function M.openMainMenu()
     "Set Existing PR Id",
     "Set PR Id manually",
     "Open PR in Browser",
+    "Some long running process",
   }
 
   ---@param row integer
@@ -36,18 +37,99 @@ end
 
 M.prId = nil
 
+local function run_async_command(command, args, on_stdout, on_exit)
+  local job_id = vim.fn.jobstart(vim.list_extend({ command }, args), {
+    rpc = false,            -- Set to true if your external command is an RPC server
+    stdout_buffered = true, -- Buffer stdout until job ends or a buffer is full
+    on_stdout = function(_, data, _)
+      -- 'data' is a list of lines from stdout
+      if on_stdout then
+        on_stdout(data)
+      end
+    end,
+    on_exit = function(_, exit_code, _)
+      -- 'exit_code' is the exit status of the command
+      if on_exit then
+        on_exit(exit_code)
+      end
+    end,
+    -- Other options you might find useful:
+    -- stderr_buffered = true,
+    -- on_stderr = function(_, data, event) ... end,
+    -- cwd = '/path/to/directory', -- Set working directory
+    -- detach = true, -- Detach the process from Neovim's control
+  })
+
+  if job_id == 0 then
+    vim.notify("Failed to start job: " .. command, vim.log.levels.ERROR)
+  end
+end
+
+local function create_progress_handle()
+  local progress = require("fidget.progress")
+  local handle = progress.handle.create({
+    title = "Azuredo",
+    message = "",
+    lsp_client = { name = "Calling DevOps" },
+    percentage = 0,
+  })
+  return handle
+end
+
+local function handleCreatePullRequestCommand()
+  local collected_output = {}
+
+  local handle = create_progress_handle()
+
+  run_async_command(
+    "sh",                                         -- Use 'sh' to execute a shell command
+    { "-c", "az repos pr create --output json" }, -- Command with sleep
+    function(output_lines)
+      print("Command output:")
+      for _, line in ipairs(output_lines) do
+        print(line)
+        table.insert(collected_output, line)
+      end
+    end,
+    function(exit_code)
+      if exit_code ~= 0 then
+        Util.debug("Command failed with exit code: " .. exit_code)
+        handle:report({
+          title = "Azuredo",
+          message = "Failed to create Pull Request",
+          percentage = 100,
+        })
+        handle:finish()
+        return
+      end
+      local raw_json_output = table.concat(collected_output, "") -- Join all lines into a single string
+      local success, pr_data = pcall(vim.json.decode, raw_json_output)
+
+      if success and pr_data and pr_data.pullRequestId then
+        Util.debug("Pull Request ID: " .. pr_data.pullRequestId .. " created successfully!")
+        M.prId = pr_data.pullRequestId
+        handle:report({
+          title = "Azuredo",
+          message = "Created Pull Request ID: " .. M.prId,
+          percentage = 100,
+        })
+      else
+        handle:report({
+          title = "Azuredo",
+          message = "Failed to parse PR response or missing ID",
+          percentage = 100,
+        })
+        Util.debug("Failed to parse PR response or missing ID.")
+        Util.debug("Raw output: " .. raw_json_output) -- Helpful for debugging
+      end
+      handle:finish()
+    end
+  )
+end
+
 function M.executeCommand(command)
   if command == "Create Pull Request" then
-    Util.notify("Creating Pull Request")
-    local result = vim.fn.system("az repos pr create --output json")
-
-    local success, pr_data = pcall(vim.json.decode, result)
-    if success and pr_data and pr_data.pullRequestId then
-      Util.notify("Pull Request ID: " .. pr_data.pullRequestId)
-      M.prId = pr_data.pullRequestId
-    else
-      Util.notifyError("Failed to create Pull Request")
-    end
+    handleCreatePullRequestCommand()
   elseif command == "Add Work item to Pull Request" then
     if not M.prId then
       Util.notifyError("No Pull Request ID found. Please create a Pull Request first.")
@@ -82,6 +164,35 @@ function M.executeCommand(command)
     else
       Util.notifyError("Failed to open PR in Browser")
     end
+  elseif command == "Some long running process" then
+    local progress = require("fidget.progress")
+
+    local handle = progress.handle.create({
+      title = "Azuredo",
+      message = "",
+      lsp_client = { name = "Calling DevOps" },
+      percentage = 0,
+    })
+
+    run_async_command(
+      "sh",                                                                  -- Use 'sh' to execute a shell command
+      { "-c", "echo 'Starting sleep...'; sleep 5; echo 'Sleep finished!'" }, -- Command with sleep
+      function(output_lines)
+        print("Command output:")
+        for _, line in ipairs(output_lines) do
+          print(line)
+        end
+      end,
+      function(exit_code)
+        handle:report({
+          title = "Azuredo",
+          message = "Got a result",
+          percentage = 100,
+        })
+        handle:finish()
+        print("Command exited with code: " .. exit_code)
+      end
+    )
   end
 end
 
@@ -91,7 +202,7 @@ function M.fetch_and_show_workitems()
   ]]
 
   cmd = cmd
-    .. [[
+      .. [[
   --wiql "SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType] \
   FROM WorkItems WHERE
   ]]
