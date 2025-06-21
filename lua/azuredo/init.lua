@@ -17,7 +17,6 @@ function M.openMainMenu()
     "Set Existing PR Id",
     "Set PR Id manually",
     "Open PR in Browser",
-    "Some long running process",
   }
 
   ---@param row integer
@@ -164,35 +163,6 @@ function M.executeCommand(command)
     else
       Util.notifyError("Failed to open PR in Browser")
     end
-  elseif command == "Some long running process" then
-    local progress = require("fidget.progress")
-
-    local handle = progress.handle.create({
-      title = "Azuredo",
-      message = "",
-      lsp_client = { name = "Calling DevOps" },
-      percentage = 0,
-    })
-
-    run_async_command(
-      "sh",                                                                  -- Use 'sh' to execute a shell command
-      { "-c", "echo 'Starting sleep...'; sleep 5; echo 'Sleep finished!'" }, -- Command with sleep
-      function(output_lines)
-        print("Command output:")
-        for _, line in ipairs(output_lines) do
-          print(line)
-        end
-      end,
-      function(exit_code)
-        handle:report({
-          title = "Azuredo",
-          message = "Got a result",
-          percentage = 100,
-        })
-        handle:finish()
-        print("Command exited with code: " .. exit_code)
-      end
-    )
   end
 end
 
