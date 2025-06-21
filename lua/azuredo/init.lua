@@ -131,7 +131,7 @@ function M.executeCommand(command)
     handleCreatePullRequestCommand()
   elseif command == "Add Work item to Pull Request" then
     if not M.prId then
-      Util.notifyError("No Pull Request ID found. Please create a Pull Request first.")
+      Util.notify_error("No Pull Request ID found. Please create a Pull Request first.")
       return
     end
 
@@ -146,12 +146,12 @@ function M.executeCommand(command)
       Util.notify("Pull Request ID: " .. pr_data[1].pullRequestId)
       M.prId = pr_data[1].pullRequestId
     else
-      Util.notifyError("Failed to get ID. PR doesn't exist or something went wrong")
+      Util.notify_error("Failed to get ID. PR doesn't exist or something went wrong")
       Util.debug(result)
     end
   elseif command == "Open PR in Browser" then
     if not M.prId then
-      Util.notifyError("No Pull Request ID found. Please create a Pull Request first.")
+      Util.notify_error("No Pull Request ID found. Please create a Pull Request first.")
       return
     end
 
@@ -161,7 +161,7 @@ function M.executeCommand(command)
       Util.notify("Opening PR " .. M.prId .. " in Browser")
       vim.ui.open(repo_url .. "/pullrequest/" .. M.prId)
     else
-      Util.notifyError("Failed to open PR in Browser")
+      Util.notify_error("Failed to open PR in Browser")
     end
   end
 end
@@ -192,7 +192,7 @@ function M.fetch_and_show_workitems()
 
   if not success or not data or #data == 0 then
     Util.debug(result)
-    Util.notifyError("No open tasks or bugs found or failed to fetch data.")
+    Util.notify_error("No open tasks or bugs found or failed to fetch data.")
     return
   end
 
