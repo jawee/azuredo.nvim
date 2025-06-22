@@ -78,9 +78,9 @@ local function handle_set_existing_pr_command()
         return
       end
 
-      local raw_json_output = table.concat(collected_output, "") -- Join all lines into a single string
-      -- local success, pr_data = pcall(vim.json.decode, raw_json_output)
+      local raw_json_output = table.concat(collected_output, "")
       local pr_data = vim.json.decode(raw_json_output)
+
       if pr_data and pr_data[1] and pr_data[1].pullRequestId then
         Util.debug("Found existing PR ID: " .. pr_data[1].pullRequestId)
         M.prId = pr_data[1].pullRequestId
@@ -120,7 +120,7 @@ local function handle_create_pull_request_command()
     else
       Util.progress_report(handle, "Failed to parse PR response or missing ID", 100)
       Util.debug("Failed to parse PR response or missing ID.")
-      Util.debug("Raw output: " .. raw_json_output) -- Helpful for debugging
+      Util.debug("Raw output: " .. raw_json_output)
     end
     Util.progress_finish(handle)
   end)
