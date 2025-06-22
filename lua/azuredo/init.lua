@@ -64,40 +64,25 @@ local function run_async_command(command, args, on_stdout, on_exit)
   end
 end
 
-local function create_progress_handle()
-  local progress = require("fidget.progress")
-  local handle = progress.handle.create({
-    title = "Azuredo",
-    message = "",
-    lsp_client = { name = "Calling DevOps" },
-    percentage = 0,
-  })
-  return handle
-end
-
 local function handle_create_pull_request_command()
   local collected_output = {}
 
-  local handle = create_progress_handle()
+  local handle = Util.create_progress_handle()
 
   run_async_command(
     "sh", -- Use 'sh' to execute a shell command
     { "-c", "az repos pr create --output json" }, -- Command with sleep
     function(output_lines)
-      print("Command output:")
+      -- print("Command output:")
       for _, line in ipairs(output_lines) do
-        print(line)
+        -- print(line)
         table.insert(collected_output, line)
       end
     end,
     function(exit_code)
       if exit_code ~= 0 then
         Util.debug("Command failed with exit code: " .. exit_code)
-        handle:report({
-          title = "Azuredo",
-          message = "Failed to create Pull Request",
-          percentage = 100,
-        })
+        Util.progress_report(handle, "Failed to create Pull Request", 100)
         handle:finish()
         return
       end
@@ -107,21 +92,13 @@ local function handle_create_pull_request_command()
       if success and pr_data and pr_data.pullRequestId then
         Util.debug("Pull Request ID: " .. pr_data.pullRequestId .. " created successfully!")
         M.prId = pr_data.pullRequestId
-        handle:report({
-          title = "Azuredo",
-          message = "Created Pull Request ID: " .. M.prId,
-          percentage = 100,
-        })
+        Util.progress_report(handle, "Created Pull Request ID: " .. M.prId, 100)
       else
-        handle:report({
-          title = "Azuredo",
-          message = "Failed to parse PR response or missing ID",
-          percentage = 100,
-        })
+        Util.progress_report(handle, "Failed to parse PR response or missing ID", 100)
         Util.debug("Failed to parse PR response or missing ID.")
         Util.debug("Raw output: " .. raw_json_output) -- Helpful for debugging
       end
-      handle:finish()
+      Util.progress_finish(handle)
     end
   )
 end
