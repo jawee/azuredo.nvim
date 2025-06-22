@@ -53,7 +53,7 @@ local function run_async_command(command, args, on_stdout, on_exit)
   })
 
   if job_id == 0 then
-    vim.notify("Failed to start job: " .. command, vim.log.levels.ERROR)
+    Util.notify_error("Failed to start job: " .. command)
   end
 end
 
@@ -171,22 +171,16 @@ end
 local function add_workitem_to_pr(work_item_id, pr_id)
   local handle = Util.create_progress_handle()
   local work_item_cmd = [[az repos pr work-item add --id ]] .. pr_id .. [[ --work-items ]] .. work_item_id
-  run_async_command(
-    "sh",
-    { "-c", work_item_cmd },
-    function(_)
-    end,
-    function(exit_code)
-      if exit_code ~= 0 then
-        Util.notify_error("Failed to add Work Item " .. work_item_id .. " to PR " .. pr_id)
-        Util.progress_report(handle, "Failed to add Work Item " .. work_item_id .. " to PR " .. pr_id, 100)
-        Util.progress_finish(handle)
-        return
-      end
-      Util.progress_report(handle, "Added Work Item " .. work_item_id .. " to PR " .. pr_id, 100)
+  run_async_command("sh", { "-c", work_item_cmd }, function(_) end, function(exit_code)
+    if exit_code ~= 0 then
+      Util.notify_error("Failed to add Work Item " .. work_item_id .. " to PR " .. pr_id)
+      Util.progress_report(handle, "Failed to add Work Item " .. work_item_id .. " to PR " .. pr_id, 100)
       Util.progress_finish(handle)
+      return
     end
-  )
+    Util.progress_report(handle, "Added Work Item " .. work_item_id .. " to PR " .. pr_id, 100)
+    Util.progress_finish(handle)
+  end)
 end
 
 local function fetch_and_show_workitems()
@@ -204,7 +198,7 @@ local function fetch_and_show_workitems()
   ]]
 
   cmd = cmd
-      .. [[
+    .. [[
   --wiql "SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType] \
   FROM WorkItems WHERE
   ]]
@@ -218,58 +212,53 @@ local function fetch_and_show_workitems()
   cmd = cmd .. [[[System.State] <> 'Closed' and [System.WorkItemType] in ('Task', 'Bug')" --output json
   ]]
 
-  run_async_command(
-    "sh",
-    { "-c", cmd },
-    function(output_lines)
-      for _, line in ipairs(output_lines) do
-        table.insert(collected_output, line)
-      end
-    end,
-    function(exit_code)
-      if exit_code ~= 0 then
-        Util.debug("Command failed with exit code: " .. exit_code)
-        Util.progress_report(handle, "Failed to fetch work items", 100)
-        Util.progress_finish(handle)
-        return
-      end
-
-      local raw_json_output = table.concat(collected_output, "")
-      local data = vim.json.decode(raw_json_output)
-
-      if not data or #data == 0 then
-        Util.debug(raw_json_output)
-        Util.notify_error("No open tasks or bugs found or failed to fetch data.")
-        return
-      end
-
-      local work_items = {}
-      local work_item_ids = {}
-      for _, item in ipairs(data) do
-        local id = item.fields["System.Id"]
-        local title = item.fields["System.Title"]
-        local wtype = item.fields["System.WorkItemType"]
-        table.insert(work_items, string.format("%d: [%s] %s", id, wtype, title))
-        table.insert(work_item_ids, id)
-      end
-
-      ---@param row integer
-      local function select_current_line(row)
-        local selected_id = work_item_ids[row]
-        if selected_id then
-          add_workitem_to_pr(selected_id, M.prId)
-        end
-      end
-
-      Util.progress_report(handle, "Fetched work items successfully", 100)
-      if Config.telescope then
-        Window.createTelescopeWindow(work_items, select_current_line, nil, "Select Work Item")
-      else
-        Window.createWindow(work_items, select_current_line)
-      end
-      Util.progress_finish(handle)
+  run_async_command("sh", { "-c", cmd }, function(output_lines)
+    for _, line in ipairs(output_lines) do
+      table.insert(collected_output, line)
     end
-  )
+  end, function(exit_code)
+    if exit_code ~= 0 then
+      Util.debug("Command failed with exit code: " .. exit_code)
+      Util.progress_report(handle, "Failed to fetch work items", 100)
+      Util.progress_finish(handle)
+      return
+    end
+
+    local raw_json_output = table.concat(collected_output, "")
+    local data = vim.json.decode(raw_json_output)
+
+    if not data or #data == 0 then
+      Util.debug(raw_json_output)
+      Util.notify_error("No open tasks or bugs found or failed to fetch data.")
+      return
+    end
+
+    local work_items = {}
+    local work_item_ids = {}
+    for _, item in ipairs(data) do
+      local id = item.fields["System.Id"]
+      local title = item.fields["System.Title"]
+      local wtype = item.fields["System.WorkItemType"]
+      table.insert(work_items, string.format("%d: [%s] %s", id, wtype, title))
+      table.insert(work_item_ids, id)
+    end
+
+    ---@param row integer
+    local function select_current_line(row)
+      local selected_id = work_item_ids[row]
+      if selected_id then
+        add_workitem_to_pr(selected_id, M.prId)
+      end
+    end
+
+    Util.progress_report(handle, "Fetched work items successfully", 100)
+    if Config.telescope then
+      Window.createTelescopeWindow(work_items, select_current_line, nil, "Select Work Item")
+    else
+      Window.createWindow(work_items, select_current_line)
+    end
+    Util.progress_finish(handle)
+  end)
 end
 
 function M.executeCommand(command)
