@@ -38,7 +38,7 @@ M.prId = nil
 
 local function run_async_command(command, args, on_stdout, on_exit)
   local job_id = vim.fn.jobstart(vim.list_extend({ command }, args), {
-    rpc = false,            -- Set to true if your external command is an RPC server
+    rpc = false, -- Set to true if your external command is an RPC server
     stdout_buffered = true, -- Buffer stdout until job ends or a buffer is full
     on_stdout = function(_, data, _)
       -- 'data' is a list of lines from stdout
@@ -75,13 +75,13 @@ local function create_progress_handle()
   return handle
 end
 
-local function handleCreatePullRequestCommand()
+local function handle_create_pull_request_command()
   local collected_output = {}
 
   local handle = create_progress_handle()
 
   run_async_command(
-    "sh",                                         -- Use 'sh' to execute a shell command
+    "sh", -- Use 'sh' to execute a shell command
     { "-c", "az repos pr create --output json" }, -- Command with sleep
     function(output_lines)
       print("Command output:")
@@ -128,7 +128,7 @@ end
 
 function M.executeCommand(command)
   if command == "Create Pull Request" then
-    handleCreatePullRequestCommand()
+    handle_create_pull_request_command()
   elseif command == "Add Work item to Pull Request" then
     if not M.prId then
       Util.notify_error("No Pull Request ID found. Please create a Pull Request first.")
@@ -172,7 +172,7 @@ function M.fetch_and_show_workitems()
   ]]
 
   cmd = cmd
-      .. [[
+    .. [[
   --wiql "SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType] \
   FROM WorkItems WHERE
   ]]
