@@ -64,43 +64,73 @@ local function run_async_command(command, args, on_stdout, on_exit)
   end
 end
 
-local function handle_create_pull_request_command()
+local function handle_set_existing_pr_command()
   local collected_output = {}
 
   local handle = Util.create_progress_handle()
 
   run_async_command(
-    "sh", -- Use 'sh' to execute a shell command
-    { "-c", "az repos pr create --output json" }, -- Command with sleep
+    "sh",
+    { "-c", "az repos pr list --source-branch $(git branch --show-current) --output json" },
     function(output_lines)
-      -- print("Command output:")
       for _, line in ipairs(output_lines) do
-        -- print(line)
         table.insert(collected_output, line)
       end
     end,
     function(exit_code)
       if exit_code ~= 0 then
         Util.debug("Command failed with exit code: " .. exit_code)
-        Util.progress_report(handle, "Failed to create Pull Request", 100)
-        handle:finish()
+        Util.progress_report(handle, "Failed to fetch existing PRs", 100)
+        Util.progress_finish(handle)
         return
       end
-      local raw_json_output = table.concat(collected_output, "") -- Join all lines into a single string
-      local success, pr_data = pcall(vim.json.decode, raw_json_output)
 
-      if success and pr_data and pr_data.pullRequestId then
-        Util.debug("Pull Request ID: " .. pr_data.pullRequestId .. " created successfully!")
-        M.prId = pr_data.pullRequestId
-        Util.progress_report(handle, "Created Pull Request ID: " .. M.prId, 100)
+      local raw_json_output = table.concat(collected_output, "") -- Join all lines into a single string
+      -- local success, pr_data = pcall(vim.json.decode, raw_json_output)
+      local pr_data = vim.json.decode(raw_json_output)
+      if pr_data and pr_data[1] and pr_data[1].pullRequestId then
+        Util.debug("Found existing PR ID: " .. pr_data[1].pullRequestId)
+        M.prId = pr_data[1].pullRequestId
+        Util.progress_report(handle, "Found existing PR ID: " .. M.prId, 100)
       else
-        Util.progress_report(handle, "Failed to parse PR response or missing ID", 100)
-        Util.debug("Failed to parse PR response or missing ID.")
-        Util.debug("Raw output: " .. raw_json_output) -- Helpful for debugging
+        Util.progress_report(handle, "No existing PR found", 100)
+        Util.debug("No existing PR found or failed to parse response.")
       end
       Util.progress_finish(handle)
     end
   )
+end
+
+local function handle_create_pull_request_command()
+  local collected_output = {}
+
+  local handle = Util.create_progress_handle()
+
+  run_async_command("sh", { "-c", "az repos pr create --output json" }, function(output_lines)
+    for _, line in ipairs(output_lines) do
+      table.insert(collected_output, line)
+    end
+  end, function(exit_code)
+    if exit_code ~= 0 then
+      Util.debug("Command failed with exit code: " .. exit_code)
+      Util.progress_report(handle, "Failed to create Pull Request", 100)
+      Util.progress_finish(handle)
+      return
+    end
+    local raw_json_output = table.concat(collected_output, "")
+    local pr_data = vim.json.decode(raw_json_output)
+
+    if pr_data and pr_data.pullRequestId then
+      Util.debug("Pull Request ID: " .. pr_data.pullRequestId .. " created successfully!")
+      M.prId = pr_data.pullRequestId
+      Util.progress_report(handle, "Created Pull Request ID: " .. M.prId, 100)
+    else
+      Util.progress_report(handle, "Failed to parse PR response or missing ID", 100)
+      Util.debug("Failed to parse PR response or missing ID.")
+      Util.debug("Raw output: " .. raw_json_output) -- Helpful for debugging
+    end
+    Util.progress_finish(handle)
+  end)
 end
 
 function M.executeCommand(command)
@@ -116,16 +146,7 @@ function M.executeCommand(command)
   elseif command == "Set PR Id manually" then
     M.prId = vim.fn.input("Enter PR ID: ")
   elseif command == "Set Existing PR Id" then
-    local result = vim.fn.system("az repos pr list --source-branch $(git branch --show-current) --output json")
-
-    local success, pr_data = pcall(vim.json.decode, result)
-    if success and pr_data and pr_data[1].pullRequestId then
-      Util.notify("Pull Request ID: " .. pr_data[1].pullRequestId)
-      M.prId = pr_data[1].pullRequestId
-    else
-      Util.notify_error("Failed to get ID. PR doesn't exist or something went wrong")
-      Util.debug(result)
-    end
+    handle_set_existing_pr_command()
   elseif command == "Open PR in Browser" then
     if not M.prId then
       Util.notify_error("No Pull Request ID found. Please create a Pull Request first.")
@@ -133,10 +154,22 @@ function M.executeCommand(command)
     end
 
     local result = vim.fn.system("az repos pr show --id " .. M.prId .. " --query repository.webUrl --output tsv")
-    local success, repo_url = pcall(string.gsub, result, "\n", "")
-    if success then
+    print(result)
+    local lines = {}
+    for line in result:gmatch("[^\n]+") do
+      table.insert(lines, line)
+    end
+
+    local url = nil
+    if #lines > 0 then
+      url = lines[#lines]
+      url = url:gsub("^%s*(.-)%s*$", "%1")
+    end
+
+    if url and url:match("^https?://") then
       Util.notify("Opening PR " .. M.prId .. " in Browser")
-      vim.ui.open(repo_url .. "/pullrequest/" .. M.prId)
+      print(url .. "/pullrequest/" .. M.prId)
+      vim.ui.open(url .. "/pullrequest/" .. M.prId)
     else
       Util.notify_error("Failed to open PR in Browser")
     end
