@@ -10,32 +10,6 @@ function M.setup(opts)
   require("azuredo.config").setup(opts)
 end
 
-function M.openMainMenu()
-  local options = {
-    "Create Pull Request",
-    "Add Work item to Pull Request",
-    "Set Existing PR Id",
-    "Set PR Id manually",
-    "Open PR in Browser",
-  }
-
-  ---@param row integer
-  local function select_current_line(row)
-    local choice = options[row]
-    if choice then
-      M.executeCommand(choice)
-    end
-  end
-
-  if Config.telescope then
-    Window.createTelescopeWindow(options, select_current_line, nil, "Available Commands")
-  else
-    Window.createWindow(options, select_current_line)
-  end
-end
-
-M.prId = nil
-
 local function run_async_command(command, args, on_stdout, on_exit)
   local job_id = vim.fn.jobstart(vim.list_extend({ command }, args), {
     rpc = false,
@@ -146,7 +120,6 @@ local function handle_open_pr_in_browser_command()
       end
     end,
     function(exit_code)
-      print(vim.inspect(collected_output))
       if exit_code ~= 0 then
         Util.notify_error("Failed to fetch PR URL. Please check your Azure CLI configuration.")
         return
@@ -261,22 +234,46 @@ local function fetch_and_show_workitems()
   end)
 end
 
-function M.executeCommand(command)
-  if command == "Create Pull Request" then
-    handle_create_pull_request_command()
-  elseif command == "Add Work item to Pull Request" then
-    if not M.prId then
-      Util.notify_error("No Pull Request ID found. Please create a Pull Request first.")
-      return
-    end
+local function handle_set_manually_command()
+  M.prId = vim.fn.input("Enter PR ID: ")
+end
 
-    fetch_and_show_workitems()
-  elseif command == "Set PR Id manually" then
-    M.prId = vim.fn.input("Enter PR ID: ")
-  elseif command == "Set Existing PR Id" then
-    handle_set_existing_pr_command()
-  elseif command == "Open PR in Browser" then
-    handle_open_pr_in_browser_command()
+local options = {
+  ["Create Pull Request"] = handle_create_pull_request_command,
+  ["Add Work item to Pull Request"] = fetch_and_show_workitems,
+  ["Set Existing PR Id"] = handle_set_existing_pr_command,
+  ["Set PR Id manually"] = handle_set_manually_command,
+  ["Open PR in Browser"] = handle_open_pr_in_browser_command,
+}
+
+function M.openMainMenu()
+  local options_list = {}
+  for key in pairs(options) do
+    table.insert(options_list, key)
+  end
+
+  ---@param row integer
+  local function select_current_line(row)
+    local choice = options_list[row]
+    if choice then
+      M.executeCommand(choice)
+    end
+  end
+
+  if Config.telescope then
+    Window.createTelescopeWindow(options_list, select_current_line, nil, "Available Commands")
+  else
+    Window.createWindow(options_list, select_current_line)
+  end
+end
+
+M.prId = nil
+
+function M.executeCommand(command)
+  if options[command] then
+    options[command]()
+  else
+    Util.notify_error("Unknown command: " .. command)
   end
 end
 
