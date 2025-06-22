@@ -168,32 +168,43 @@ local function handle_open_pr_in_browser_command()
   )
 end
 
-function M.executeCommand(command)
-  if command == "Create Pull Request" then
-    handle_create_pull_request_command()
-  elseif command == "Add Work item to Pull Request" then
-    if not M.prId then
-      Util.notify_error("No Pull Request ID found. Please create a Pull Request first.")
-      return
+local function add_workitem_to_pr(work_item_id, pr_id)
+  local handle = Util.create_progress_handle()
+  local work_item_cmd = [[az repos pr work-item add --id ]] .. pr_id .. [[ --work-items ]] .. work_item_id
+  run_async_command(
+    "sh",
+    { "-c", work_item_cmd },
+    function(_)
+    end,
+    function(exit_code)
+      if exit_code ~= 0 then
+        Util.notify_error("Failed to add Work Item " .. work_item_id .. " to PR " .. pr_id)
+        Util.progress_report(handle, "Failed to add Work Item " .. work_item_id .. " to PR " .. pr_id, 100)
+        Util.progress_finish(handle)
+        return
+      end
+      Util.progress_report(handle, "Added Work Item " .. work_item_id .. " to PR " .. pr_id, 100)
+      Util.progress_finish(handle)
     end
-
-    M.fetch_and_show_workitems()
-  elseif command == "Set PR Id manually" then
-    M.prId = vim.fn.input("Enter PR ID: ")
-  elseif command == "Set Existing PR Id" then
-    handle_set_existing_pr_command()
-  elseif command == "Open PR in Browser" then
-    handle_open_pr_in_browser_command()
-  end
+  )
 end
 
-function M.fetch_and_show_workitems()
+local function fetch_and_show_workitems()
+  if not M.prId then
+    Util.notify_error("No Pull Request ID found. Please create a Pull Request first.")
+    return
+  end
+
+  local collected_output = {}
+
+  local handle = Util.create_progress_handle()
+
   local cmd = [[
   az boards query \
   ]]
 
   cmd = cmd
-    .. [[
+      .. [[
   --wiql "SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType] \
   FROM WorkItems WHERE
   ]]
@@ -207,40 +218,76 @@ function M.fetch_and_show_workitems()
   cmd = cmd .. [[[System.State] <> 'Closed' and [System.WorkItemType] in ('Task', 'Bug')" --output json
   ]]
 
-  local result = vim.fn.system(cmd)
+  run_async_command(
+    "sh",
+    { "-c", cmd },
+    function(output_lines)
+      for _, line in ipairs(output_lines) do
+        table.insert(collected_output, line)
+      end
+    end,
+    function(exit_code)
+      if exit_code ~= 0 then
+        Util.debug("Command failed with exit code: " .. exit_code)
+        Util.progress_report(handle, "Failed to fetch work items", 100)
+        Util.progress_finish(handle)
+        return
+      end
 
-  local success, data = pcall(vim.json.decode, result)
+      local raw_json_output = table.concat(collected_output, "")
+      local data = vim.json.decode(raw_json_output)
 
-  if not success or not data or #data == 0 then
-    Util.debug(result)
-    Util.notify_error("No open tasks or bugs found or failed to fetch data.")
-    return
-  end
+      if not data or #data == 0 then
+        Util.debug(raw_json_output)
+        Util.notify_error("No open tasks or bugs found or failed to fetch data.")
+        return
+      end
 
-  local work_items = {}
-  local work_item_ids = {}
-  for _, item in ipairs(data) do
-    local id = item.fields["System.Id"]
-    local title = item.fields["System.Title"]
-    local wtype = item.fields["System.WorkItemType"]
-    table.insert(work_items, string.format("%d: [%s] %s", id, wtype, title))
-    table.insert(work_item_ids, id)
-  end
+      local work_items = {}
+      local work_item_ids = {}
+      for _, item in ipairs(data) do
+        local id = item.fields["System.Id"]
+        local title = item.fields["System.Title"]
+        local wtype = item.fields["System.WorkItemType"]
+        table.insert(work_items, string.format("%d: [%s] %s", id, wtype, title))
+        table.insert(work_item_ids, id)
+      end
 
-  ---@param row integer
-  local function select_current_line(row)
-    local selected_id = work_item_ids[row]
-    if selected_id then
-      Util.notify("Adding Id" .. selected_id .. " to PR " .. M.prId)
-      local work_item_cmd = [[az repos pr work-item add --id ]] .. M.prId .. [[ --work-items ]] .. selected_id
-      vim.fn.system(work_item_cmd)
+      ---@param row integer
+      local function select_current_line(row)
+        local selected_id = work_item_ids[row]
+        if selected_id then
+          add_workitem_to_pr(selected_id, M.prId)
+        end
+      end
+
+      Util.progress_report(handle, "Fetched work items successfully", 100)
+      if Config.telescope then
+        Window.createTelescopeWindow(work_items, select_current_line, nil, "Select Work Item")
+      else
+        Window.createWindow(work_items, select_current_line)
+      end
+      Util.progress_finish(handle)
     end
-  end
+  )
+end
 
-  if Config.telescope then
-    Window.createTelescopeWindow(work_items, select_current_line, nil, "Select Work Item")
-  else
-    Window.createWindow(work_items, select_current_line)
+function M.executeCommand(command)
+  if command == "Create Pull Request" then
+    handle_create_pull_request_command()
+  elseif command == "Add Work item to Pull Request" then
+    if not M.prId then
+      Util.notify_error("No Pull Request ID found. Please create a Pull Request first.")
+      return
+    end
+
+    fetch_and_show_workitems()
+  elseif command == "Set PR Id manually" then
+    M.prId = vim.fn.input("Enter PR ID: ")
+  elseif command == "Set Existing PR Id" then
+    handle_set_existing_pr_command()
+  elseif command == "Open PR in Browser" then
+    handle_open_pr_in_browser_command()
   end
 end
 
