@@ -40,6 +40,25 @@ function M.create_progress_handle()
     })
     return handle
   end
+
+  return {
+    report = function(_, other)
+      M.notify(other.message)
+    end,
+    finish = function() end,
+  }
+end
+
+function M.progress_report(handle, message, percentage)
+  handle:report({
+    title = "Azuredo",
+    message = message,
+    percentage = percentage,
+  })
+end
+
+function M.progress_finish(handle)
+  handle:finish()
 end
 
 return M
