@@ -38,25 +38,18 @@ M.prId = nil
 
 local function run_async_command(command, args, on_stdout, on_exit)
   local job_id = vim.fn.jobstart(vim.list_extend({ command }, args), {
-    rpc = false, -- Set to true if your external command is an RPC server
-    stdout_buffered = true, -- Buffer stdout until job ends or a buffer is full
+    rpc = false,
+    stdout_buffered = true,
     on_stdout = function(_, data, _)
-      -- 'data' is a list of lines from stdout
       if on_stdout then
         on_stdout(data)
       end
     end,
     on_exit = function(_, exit_code, _)
-      -- 'exit_code' is the exit status of the command
       if on_exit then
         on_exit(exit_code)
       end
     end,
-    -- Other options you might find useful:
-    -- stderr_buffered = true,
-    -- on_stderr = function(_, data, event) ... end,
-    -- cwd = '/path/to/directory', -- Set working directory
-    -- detach = true, -- Detach the process from Neovim's control
   })
 
   if job_id == 0 then
@@ -133,6 +126,48 @@ local function handle_create_pull_request_command()
   end)
 end
 
+local function handle_open_pr_in_browser_command()
+  if not M.prId then
+    Util.notify_error("No Pull Request ID found. Please create a Pull Request first.")
+    return
+  end
+  local collected_output = {}
+
+  local handle = Util.create_progress_handle()
+  run_async_command(
+    "sh",
+    { "-c", "az repos pr show --id " .. M.prId .. " --query repository.webUrl --output tsv" },
+    function(output_lines)
+      for _, line in ipairs(output_lines) do
+        if line and line ~= "" then
+          line = line:gsub("^%s*(.-)%s*$", "%1")
+          table.insert(collected_output, line)
+        end
+      end
+    end,
+    function(exit_code)
+      print(vim.inspect(collected_output))
+      if exit_code ~= 0 then
+        Util.notify_error("Failed to fetch PR URL. Please check your Azure CLI configuration.")
+        return
+      end
+      local url = nil
+      if #collected_output > 0 then
+        url = collected_output[#collected_output]
+        url = url:gsub("^%s*(.-)%s*$", "%1")
+      end
+
+      if url and url:match("^https?://") then
+        Util.progress_report(handle, "Opening PR " .. M.prId .. " in Browser", 100)
+        vim.ui.open(url .. "/pullrequest/" .. M.prId)
+      else
+        Util.progress_report(handle, "Failed to open PR in Browser", 100)
+      end
+      Util.progress_finish(handle)
+    end
+  )
+end
+
 function M.executeCommand(command)
   if command == "Create Pull Request" then
     handle_create_pull_request_command()
@@ -148,31 +183,7 @@ function M.executeCommand(command)
   elseif command == "Set Existing PR Id" then
     handle_set_existing_pr_command()
   elseif command == "Open PR in Browser" then
-    if not M.prId then
-      Util.notify_error("No Pull Request ID found. Please create a Pull Request first.")
-      return
-    end
-
-    local result = vim.fn.system("az repos pr show --id " .. M.prId .. " --query repository.webUrl --output tsv")
-    print(result)
-    local lines = {}
-    for line in result:gmatch("[^\n]+") do
-      table.insert(lines, line)
-    end
-
-    local url = nil
-    if #lines > 0 then
-      url = lines[#lines]
-      url = url:gsub("^%s*(.-)%s*$", "%1")
-    end
-
-    if url and url:match("^https?://") then
-      Util.notify("Opening PR " .. M.prId .. " in Browser")
-      print(url .. "/pullrequest/" .. M.prId)
-      vim.ui.open(url .. "/pullrequest/" .. M.prId)
-    else
-      Util.notify_error("Failed to open PR in Browser")
-    end
+    handle_open_pr_in_browser_command()
   end
 end
 
