@@ -1,12 +1,10 @@
 # azuredo.nvim
 Plugin for Azure DevOps integration in Neovim
 
-# Work in Progress
-Should probably not be used.
-
 ## Features
 - Create PR from current branch
 - Add Work Items to PR
+- Open PR in browser
 - [Telescope](https://github.com/nvim-telescope/telescope.nvim) UI
 - [Fidget](https://github.com/j-hui/fidget.nvim) notifications
 
