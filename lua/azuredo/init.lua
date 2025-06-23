@@ -1,3 +1,4 @@
+local Command = require("azuredo.command")
 local Config = require("azuredo.config")
 local Util = require("azuredo.util")
 local Window = require("azuredo.window")
@@ -10,35 +11,13 @@ function M.setup(opts)
   require("azuredo.config").setup(opts)
 end
 
-local function run_async_command(command, args, on_stdout, on_exit)
-  local job_id = vim.fn.jobstart(vim.list_extend({ command }, args), {
-    rpc = false,
-    stdout_buffered = true,
-    on_stdout = function(_, data, _)
-      if on_stdout then
-        on_stdout(data)
-      end
-    end,
-    on_exit = function(_, exit_code, _)
-      if on_exit then
-        on_exit(exit_code)
-      end
-    end,
-  })
-
-  if job_id == 0 then
-    Util.notify_error("Failed to start job: " .. command)
-  end
-end
-
 local function handle_set_existing_pr_command()
   local collected_output = {}
 
-  local handle = Util.create_progress_handle()
+  local handle = Util.create_progress_handle("Fetching existing PR id")
 
-  run_async_command(
-    "sh",
-    { "-c", "az repos pr list --source-branch $(git branch --show-current) --output json" },
+  Command.run_async_command(
+    { "az repos pr list --source-branch $(git branch --show-current) --output json" },
     function(output_lines)
       for _, line in ipairs(output_lines) do
         table.insert(collected_output, line)
@@ -71,9 +50,9 @@ end
 local function handle_create_pull_request_command()
   local collected_output = {}
 
-  local handle = Util.create_progress_handle()
+  local handle = Util.create_progress_handle("Creating Pull Request")
 
-  run_async_command("sh", { "-c", "az repos pr create --output json" }, function(output_lines)
+  Command.run_async_command({ "az repos pr create --output json" }, function(output_lines)
     for _, line in ipairs(output_lines) do
       table.insert(collected_output, line)
     end
@@ -107,10 +86,9 @@ local function handle_open_pr_in_browser_command()
   end
   local collected_output = {}
 
-  local handle = Util.create_progress_handle()
-  run_async_command(
-    "sh",
-    { "-c", "az repos pr show --id " .. M.prId .. " --query repository.webUrl --output tsv" },
+  local handle = Util.create_progress_handle("Opening Pull Request in Browser")
+  Command.run_async_command(
+    { "az repos pr show --id " .. M.prId .. " --query repository.webUrl --output tsv" },
     function(output_lines)
       for _, line in ipairs(output_lines) do
         if line and line ~= "" then
@@ -142,9 +120,9 @@ local function handle_open_pr_in_browser_command()
 end
 
 local function add_workitem_to_pr(work_item_id, pr_id)
-  local handle = Util.create_progress_handle()
+  local handle = Util.create_progress_handle("Adding Work Item " .. work_item_id .. " to PR " .. pr_id)
   local work_item_cmd = [[az repos pr work-item add --id ]] .. pr_id .. [[ --work-items ]] .. work_item_id
-  run_async_command("sh", { "-c", work_item_cmd }, function(_) end, function(exit_code)
+  Command.run_async_command({ work_item_cmd }, function(_) end, function(exit_code)
     if exit_code ~= 0 then
       Util.notify_error("Failed to add Work Item " .. work_item_id .. " to PR " .. pr_id)
       Util.progress_report(handle, "Failed to add Work Item " .. work_item_id .. " to PR " .. pr_id, 100)
@@ -164,7 +142,7 @@ local function fetch_and_show_workitems()
 
   local collected_output = {}
 
-  local handle = Util.create_progress_handle()
+  local handle = Util.create_progress_handle("Fetching Work Items")
 
   local cmd = [[
   az boards query \
@@ -185,7 +163,7 @@ local function fetch_and_show_workitems()
   cmd = cmd .. [[[System.State] <> 'Closed' and [System.WorkItemType] in ('Task', 'Bug')" --output json
   ]]
 
-  run_async_command("sh", { "-c", cmd }, function(output_lines)
+  Command.run_async_command({ cmd }, function(output_lines)
     for _, line in ipairs(output_lines) do
       table.insert(collected_output, line)
     end
