@@ -28,14 +28,14 @@ function M.notify_error(msg)
   vim.notify(msg, vim.log.levels.ERROR)
 end
 
--- @return progress_handle
-function M.create_progress_handle()
+---@param message string
+function M.create_progress_handle(message)
   if Config.fidget then
     local progress = require("fidget.progress")
     local handle = progress.handle.create({
       title = "Azuredo",
       message = "",
-      lsp_client = { name = "Calling DevOps" },
+      lsp_client = { name = message or "Calling DevOps" },
       percentage = 0,
     })
     return handle
