@@ -1,4 +1,4 @@
-local Util = require "azuredo.util"
+local Util = require("azuredo.util")
 local M = {}
 
 ---@param args table

@@ -1,7 +1,7 @@
+local Command = require("azuredo.command")
 local Config = require("azuredo.config")
 local Util = require("azuredo.util")
 local Window = require("azuredo.window")
-local Command = require("azuredo.command")
 
 local M = {}
 
